@@ -1,132 +1,95 @@
 # Portfolio & Alert Management API
 
-A backend service for a stock market application. Built with FastAPI, PostgreSQL, and JWT authentication.
+## Project Overview
 
-## Features
+A backend service for a stock market application, built with FastAPI and PostgreSQL. It allows users to register and log in securely, manage a stock portfolio, set price alerts, and maintain a watchlist — all behind JWT-protected endpoints.
+
+## Features Implemented
 
 - **Authentication** — register, login, refresh, and logout using JWT access tokens + refresh tokens
 - **Portfolio Management** — add, view, update, and delete stock holdings
-- **Alerts** — set price alerts (above/below a target price) for a symbol
-- **Watchlist** — track stock symbols of interest
-- **Rate limiting** on register/login (5 requests per minute)
+- **Alerts** — create price alerts (above/below a target price) for a symbol, view and delete them
+- **Watchlist** — add, view, and remove tracked stock symbols
+- **Rate limiting** on register/login (5 requests per minute per IP)
+- **Interactive API docs** via Swagger UI (`/docs`)
+- **Unit tests** covering authentication and portfolio flows
 
-## Tech Stack
+## Technologies Used
 
-- FastAPI
-- PostgreSQL + SQLAlchemy (async)
-- Alembic for migrations
-- JWT (python-jose) + bcrypt for password hashing
-- pytest for testing
-- Docker & Docker Compose
+- **FastAPI** — web framework
+- **PostgreSQL** — database
+- **SQLAlchemy (async)** — ORM
+- **Alembic** — database migrations
+- **python-jose** — JWT encoding/decoding
+- **bcrypt / passlib** — password hashing
+- **slowapi** — rate limiting
+- **pytest / pytest-asyncio / httpx** — testing
+- **Docker & Docker Compose** — containerization
 
-## Getting Started
+## Setup Instructions
 
 ### 1. Clone the repo
 
-```bash
+\`\`\`bash
 git clone https://github.com/<your-username>/<repo-name>.git
 cd <repo-name>
-```
+\`\`\`
 
 ### 2. Set up environment variables
 
 Copy the example env file and fill in your own values:
 
-```bash
+\`\`\`bash
 cp .env.example .env
-```
+\`\`\`
 
-Required variables:
-
-| Variable | Description |
-|---|---|
-| `POSTGRES_USER` | Database username |
-| `POSTGRES_PASSWORD` | Database password |
-| `POSTGRES_DB` | Database name |
-| `DATABASE_URL` | Full async connection string for the app |
-| `JWT_SECRET_KEY` | Secret used to sign JWT tokens |
-| `JWT_EXPIRE_MINUTES` | Access token expiry time |
-| `TEST_DATABASE_URL` | Connection string for the test database |
+See the [Environment Variables](#environment-variables) section below for what each value means.
 
 ### 3. Run with Docker
 
-```bash
+\`\`\`bash
 docker compose up -d --build
-```
+\`\`\`
 
-The API will be available at `http://localhost:8000`.
+The API will be available at \`http://localhost:8000\`.
 
 ### 4. Explore the API
 
-Open `http://localhost:8000/docs` for interactive Swagger documentation.
+Open \`http://localhost:8000/docs\` for interactive Swagger documentation. Register a user, log in to get an access token, then click **Authorize** and paste the token to call protected endpoints.
 
-## Running Tests
+### 5. Running tests
 
-Tests run against a separate test database (`TEST_DATABASE_URL` in `.env`).
+Tests run against a separate test database. Create it first:
 
-Create the test database first:
-
-```bash
+\`\`\`bash
 docker compose exec db psql -U <your_user> -d <your_db> -c "CREATE DATABASE <your_test_db>;"
-```
+\`\`\`
 
 Then run:
 
-```bash
+\`\`\`bash
 pytest -v
-```
+\`\`\`
 
-## API Overview
+## Environment Variables
 
-### Auth
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/auth/register` | Create a new user |
-| POST | `/auth/login` | Log in and receive tokens |
-| POST | `/auth/refresh` | Get a new access token |
-| POST | `/auth/logout` | Revoke a refresh token |
+| Variable | Description |
+|---|---|
+| \`POSTGRES_USER\` | Database username |
+| \`POSTGRES_PASSWORD\` | Database password |
+| \`POSTGRES_DB\` | Database name |
+| \`DATABASE_URL\` | Full async connection string used by the app |
+| \`JWT_SECRET_KEY\` | Secret key used to sign JWT tokens |
+| \`JWT_EXPIRE_MINUTES\` | Access token expiry time, in minutes |
+| \`TEST_DATABASE_URL\` | Connection string for the test database |
 
-### Portfolio
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/portfolio/` | List all holdings |
-| POST | `/portfolio/` | Add a holding |
-| PUT | `/portfolio/{id}` | Update a holding |
-| DELETE | `/portfolio/{id}` | Remove a holding |
+A template with placeholder values is provided in \`.env.example\`.
 
-### Alerts
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/alerts/` | List all alerts |
-| POST | `/alerts/` | Create an alert |
-| DELETE | `/alerts/{id}` | Remove an alert |
+## Assumptions & Limitations
 
-### Watchlist
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/watchlist/` | List watchlist items |
-| POST | `/watchlist/` | Add a symbol |
-| DELETE | `/watchlist/{id}` | Remove a symbol |
-
-All portfolio, alert, and watchlist endpoints require a valid JWT access token in the `Authorization: Bearer <token>` header.
-
-## Project Structure
-
-```
-.
-├── auth.py           # Authentication routes
-├── portfolio.py       # Portfolio routes
-├── alerts.py           # Alert routes
-├── watchlist.py         # Watchlist routes
-├── models.py            # SQLAlchemy models
-├── schemas.py            # Pydantic request/response schemas
-├── security.py            # JWT + password hashing
-├── database.py              # DB engine/session setup
-├── config.py                 # Environment-based settings
-├── limiter.py                  # Rate limiting setup
-├── main.py                      # FastAPI app entry point
-├── alembic/                      # Database migrations
-├── test_auth.py                   # Auth tests
-├── test_portfolio.py                # Portfolio tests
-└── conftest.py                       # Test fixtures
-```
+- Prices (\`averagePrice\`, \`targetPrice\`) are stored as floats rather than fixed-point decimals — acceptable for this scope, but not ideal for real financial precision.
+- Alerts are stored but not actively evaluated against live prices — there's no background job checking whether an alert's condition has been met.
+- Refresh tokens are not rotated on use; the same refresh token remains valid until it expires or is explicitly logged out.
+- CORS is currently open to all origins (\`allow_origins=["*"]\`) for ease of local development, not intended for production as-is.
+- Rate limiting is in-memory (per process), so it won't be consistent across multiple backend instances without a shared store like Redis.
+- Route prefixes use \`/auth/...\` rather than root-level \`/register\`, \`/login\`, etc.
